@@ -1,0 +1,40 @@
+---
+ - name: install kubernetes
+   become: true
+   hosts: node
+
+   tasks:
+     - name: remove swap
+       mount:
+         name: "{{ item }}"
+         fstype: swap
+         state: absent
+       with_items:
+         - swap
+         - none
+
+     - name: disable swap
+       command: swapoff -a
+       when: ansible_swaptotal_mb > 0
+
+     - name: Add key for k8s
+       apt_key:
+         url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+         state: present
+
+     - name: add apt repository for k8s
+       apt_repository:
+         repo: "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+         state: present
+         filename: kubernetes.list
+         update_cache: yes
+
+     - name: Install k8s binaries
+       apt:
+         name: "{{ item }}"
+         state: present
+         update_cache: no
+       loop:
+           - kubelet
+           - kubeadm
+           - kubectl

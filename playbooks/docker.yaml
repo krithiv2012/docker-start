@@ -1,0 +1,28 @@
+---
+ - name: playbook to install docker
+   hosts: node
+   gather_facts: true
+   become: true
+
+   tasks:
+     - name: add key
+       apt_key:
+         url: https://download.docker.com/linux/{{ansible_distribution | lower}}/gpg
+         state: present
+
+     - name: add repo
+       apt_repository:
+         repo: deb [arch=amd64] https://download.docker.com/linux/{{ansible_distribution | lower}} {{ansible_distribution_release}}  stable
+         state: present
+         update_cache: true
+
+     - name: install docker
+       apt: name={{item}} state=present update_cache=yes
+       loop:
+         - docker-ce
+         - docker-ce-cli
+         - containerd.io
+
+     - name: check docker service status
+       service: name=docker state=started
+

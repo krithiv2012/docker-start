@@ -1,0 +1,9 @@
+[master]
+kubmaster
+
+[node]
+kubnode1
+kubnode2
+
+[anisble-master]
+control ansible_connection=local

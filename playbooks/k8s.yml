@@ -1,0 +1,69 @@
+---
+ - name: install kubernetes
+   become: true
+   hosts: master
+
+   tasks:
+     - name: remove swap
+       mount:
+         name: "{{ item }}"
+         fstype: swap
+         state: absent
+       with_items:
+         - swap
+         - none
+
+     - name: disable swap
+       command: swapoff -a
+       when: ansible_swaptotal_mb > 0
+
+     - name: Add key for k8s
+       apt_key:
+         url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+         state: present
+
+     - name: add apt repository for k8s
+       apt_repository:
+         repo: "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+         state: present
+         filename: kubernetes.list
+         update_cache: yes
+
+     - name: Install k8s binaries
+       apt:
+         name: "{{ item }}"
+         state: present
+         update_cache: no
+       loop:
+           - kubelet
+           - kubeadm
+           - kubectl
+
+     - name: reset kubeadm if already started
+       command: kubeadm reset --force
+
+     - name: Initialize the cluster using kubeadm
+       shell: kubeadm init --pod-network-cidr=172.31.0.0/16 --ignore-preflight-errors=NumCPU >> cluster_init.txt
+       args:
+         chdir: /home/ubuntu
+
+     - name: create .kube dir
+       become: true
+       become_user: ubuntu 
+       file:
+         path: /home/ubuntu/.kube
+         state: directory
+         mode: 0755
+
+     - name: copy admin.conf
+       become: true
+       copy:
+         src: /etc/kubernetes/admin.conf
+         dest: /home/ubuntu/.kube/config
+         remote_src: yes
+         owner: ubuntu
+
+     - name: Install calico pod network
+       become: true
+       become_user: ubuntu 
+       shell: kubectl apply -f https://docs.projectcalico.org/v3.11/manifests/calico.yaml
